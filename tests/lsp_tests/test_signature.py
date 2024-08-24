@@ -48,6 +48,7 @@ def test_signature_help(trigger_char, column, active_param):
                         {"label": "arg2: int"},
                         {"label": "arg3: list"},
                     ],
+                    "activeParameter": active_param,
                 }
             ],
             "activeSignature": 0,

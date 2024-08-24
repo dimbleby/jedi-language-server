@@ -52,11 +52,14 @@ from lsprotocol.types import (
     InitializeParams,
     InitializeResult,
     Location,
+    LogMessageParams,
     MarkupContent,
     MarkupKind,
     MessageType,
     ParameterInformation,
+    PublishDiagnosticsParams,
     RenameParams,
+    ShowMessageParams,
     SignatureHelp,
     SignatureHelpOptions,
     SignatureInformation,
@@ -66,8 +69,8 @@ from lsprotocol.types import (
     WorkspaceSymbolParams,
 )
 from pygls.capabilities import get_capability
+from pygls.lsp.server import LanguageServer
 from pygls.protocol import LanguageServerProtocol, lsp_method
-from pygls.server import LanguageServer
 
 from . import jedi_utils, pygls_utils, text_edit_utils
 from .initialization_options import (
@@ -103,8 +106,12 @@ class JediLanguageServerProtocol(LanguageServerProtocol):
                 "Invalid InitializationOptions, using defaults:"
                 f" {cattrs.transform_error(error)}"
             )
-            server.show_message(msg, msg_type=MessageType.Error)
-            server.show_message_log(msg, msg_type=MessageType.Error)
+            server.window_show_message(
+                ShowMessageParams(type=MessageType.Error, message=msg)
+            )
+            server.window_log_message(
+                LogMessageParams(type=MessageType.Error, message=msg)
+            )
             server.initialization_options = InitializationOptions()
 
         initialization_options = server.initialization_options
@@ -297,6 +304,7 @@ def signature_help(
                 ParameterInformation(label=info.to_string())
                 for info in signature.params
             ],
+            active_parameter=signature.index,
         )
         for signature in signatures_jedi
     ]
@@ -671,14 +679,18 @@ def _publish_diagnostics(server: JediLanguageServer, uri: str) -> None:
     # canceling notifications that happen in that interval.
     # Since this function is executed after a delay, we need to check
     # whether the document still exists
-    if uri not in server.workspace.documents:
+    if uri not in server.workspace.text_documents:
         return
 
     doc = server.workspace.get_text_document(uri)
     diagnostic = jedi_utils.lsp_python_diagnostic(uri, doc.source)
     diagnostics = [diagnostic] if diagnostic else []
 
-    server.publish_diagnostics(uri, diagnostics)
+    server.text_document_publish_diagnostics(
+        PublishDiagnosticsParams(
+            uri=uri, diagnostics=diagnostics, version=doc.version
+        )
+    )
 
 
 # TEXT_DOCUMENT_DID_SAVE
@@ -731,7 +743,9 @@ def did_close_diagnostics(
     server: JediLanguageServer, params: DidCloseTextDocumentParams
 ) -> None:
     """Actions run on textDocument/didClose: diagnostics."""
-    server.publish_diagnostics(params.text_document.uri, [])
+    server.text_document_publish_diagnostics(
+        PublishDiagnosticsParams(uri=params.text_document.uri, diagnostics=[])
+    )
 
 
 def did_close_default(

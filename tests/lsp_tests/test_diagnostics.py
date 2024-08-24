@@ -94,6 +94,7 @@ def test_publish_diagnostics_on_open():
                         "source": "compile",
                     }
                 ],
+                "version": 1,
             }
         ]
     assert_that(actual, is_(expected))
@@ -202,6 +203,7 @@ def test_publish_diagnostics_on_change():
                         "source": "compile",
                     }
                 ],
+                "version": 2,
             }
         ]
     assert_that(actual, is_(expected))
@@ -325,6 +327,7 @@ def test_publish_diagnostics_on_save():
                         "source": "compile",
                     }
                 ],
+                "version": 2,
             }
         ]
     assert_that(actual, is_(expected))
